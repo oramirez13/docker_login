@@ -1,0 +1,452 @@
+/* ============================================================
+   style.css - M_R Web Design
+   Version: 3.0
+   Description: General reset, CSS variables, global parallax
+   and responsive styles. Palette inspired by TryHackMe.
+   ============================================================ */
+
+:root {
+    --color-fondo: #1c2333;
+    --color-texto: #ffffff;
+    --color-primario: #1db954;
+    --color-secundario: #212c3d;
+    --color-terciario: #2a3647;
+    --color-borde: #3d4f66;
+    --color-claro: #ffffff;
+    --color-suave: #a9b5c8;
+    --color-blanco-suave: #dce4ee;
+
+    --fuente-principal: Arial, Helvetica, sans-serif;
+    --tamano-base: 16px;
+    --altura-linea: 1.6;
+
+    --espaciado-chico: 8px;
+    --espaciado-medio: 16px;
+    --espaciado-grande: 32px;
+
+    --radio-borde: 4px;
+    --sombra-caja: 0 2px 6px rgba(0, 0, 0, 0.12);
+    --transicion-rapida: 0.2s ease;
+}
+
+/* --- RESET --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: var(--tamano-base);
+    scroll-behavior: smooth;
+}
+
+/* --- GLOBAL PARALLAX & BODY --- */
+body {
+    font-family: var(--fuente-principal);
+    font-size: 1rem;
+    line-height: var(--altura-linea);
+    color: var(--color-texto);
+    background-image: url('../img/infosec_orami_.png');
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(28, 35, 51, 0.85);
+    z-index: -1;
+}
+
+.contenedor {
+    width: 100%;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--espaciado-medio);
+    padding-right: var(--espaciado-medio);
+}
+
+/* --- TYPOGRAPHY --- */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: bold;
+    line-height: 1.3;
+    margin-bottom: var(--espaciado-medio);
+    color: var(--color-texto);
+}
+h1 { font-size: 2rem; }
+h2 { font-size: 1.75rem; }
+h3 { font-size: 1.5rem; }
+
+p { margin-bottom: var(--espaciado-medio); }
+
+a {
+    color: var(--color-blanco-suave);
+    text-decoration: underline;
+    transition: color var(--transicion-rapida);
+}
+a:hover { color: var(--color-claro); text-decoration: none; }
+img { max-width: 100%; height: auto; display: block; }
+ul, ol { list-style: none; }
+
+/* --- BASE FORMS --- */
+input, textarea, select {
+    width: 100%;
+    font-family: var(--fuente-principal);
+    font-size: 1rem;
+    padding: var(--espaciado-chico) var(--espaciado-medio);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde);
+    background-color: rgba(33, 44, 61, 0.9);
+    color: var(--color-texto);
+    transition: border-color var(--transicion-rapida);
+}
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--color-primario);
+    box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.30);
+}
+input::placeholder, textarea::placeholder { color: var(--color-suave); }
+
+button {
+    font-family: var(--fuente-principal);
+    font-size: 1rem;
+    padding: var(--espaciado-chico) var(--espaciado-grande);
+    background-color: var(--color-primario);
+    color: var(--color-claro);
+    border: none;
+    border-radius: var(--radio-borde);
+    cursor: pointer;
+    transition: background-color var(--transicion-rapida);
+}
+button:hover { background-color: var(--color-terciario); }
+
+/* --- HEADER & NAV --- */
+.encabezado {
+    background-color: rgba(33, 44, 61, 0.95);
+    border-bottom: 1px solid var(--color-borde);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+@supports (backdrop-filter: blur(5px)) {
+    .encabezado { backdrop-filter: blur(5px); }
+}
+
+.navegacion {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--espaciado-medio);
+    min-height: 72px;
+    flex-wrap: wrap;
+}
+
+.marca {
+    color: var(--color-suave);
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+.marca:hover, .marca:focus, .marca:active { color: var(--color-suave); text-decoration: none; }
+
+.logo-navbar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: block; }
+
+.boton-hamburguesa {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    flex-direction: column;
+    gap: 5px;
+    order: 2;
+}
+.linea-hamburguesa {
+    display: block;
+    width: 25px; height: 3px;
+    background-color: var(--color-suave);
+    border-radius: 2px;
+    transition: all var(--transicion-rapida);
+}
+.boton-hamburguesa:hover .linea-hamburguesa { background-color: var(--color-claro); }
+
+.menu {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--espaciado-chico);
+    margin-bottom: 0;
+}
+.menu a {
+    color: var(--color-suave);
+    display: block;
+    padding: 8px 10px;
+    text-decoration: none;
+}
+.menu a:hover, .menu a.active {
+    background-color: var(--color-terciario);
+    color: var(--color-claro);
+    text-decoration: none;
+}
+
+/* --- HERO --- */
+.hero {
+    border-bottom: 1px solid rgba(61, 79, 102, 0.4);
+    padding: 100px 0;
+}
+.hero-contenido { max-width: 820px; }
+.etiqueta {
+    color: var(--color-primario);
+    font-weight: bold;
+    margin-bottom: var(--espaciado-chico);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+.hero h1 {
+    color: var(--color-claro);
+    font-size: 2.8rem;
+    margin-bottom: var(--espaciado-medio);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.hero p { color: var(--color-blanco-suave); font-size: 1.1rem; max-width: 720px; }
+
+.acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--espaciado-medio);
+    margin-top: var(--espaciado-grande);
+}
+.boton {
+    border-radius: var(--radio-borde);
+    display: inline-block;
+    font-weight: bold;
+    padding: 10px 18px;
+    text-decoration: none;
+}
+.boton-principal { background-color: var(--color-primario); color: var(--color-claro); }
+.boton-principal:hover { background-color: var(--color-borde); text-decoration: none; }
+.boton-secundario { background-color: var(--color-secundario); color: var(--color-claro); border: 1px solid var(--color-borde); }
+.boton-secundario:hover { background-color: var(--color-borde); text-decoration: none; }
+
+/* --- SECTIONS --- */
+.seccion {
+    background-color: rgba(28, 35, 51, 0.6);
+    padding: 56px 0;
+    border-top: 1px solid rgba(61, 79, 102, 0.3);
+}
+.seccion:last-of-type {
+    border-bottom: 1px solid rgba(61, 79, 102, 0.3);
+}
+.seccion h1, .seccion h2, .seccion h3 { color: var(--color-claro); }
+.seccion p { color: var(--color-blanco-suave); }
+
+/* --- CARDS --- */
+.tarjeta {
+    background-color: rgba(42, 54, 71, 0.9);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde);
+    height: 100%;
+    padding: var(--espaciado-grande);
+}
+.tarjeta-servicio {
+    background-color: rgba(42, 54, 71, 0.9);
+    border: 1px solid var(--color-borde);
+    color: var(--color-suave);
+    cursor: pointer;
+    transition: transform var(--transicion-rapida);
+}
+.tarjeta-servicio:hover {
+    background-color: rgba(33, 44, 61, 0.95);
+    transform: translateY(-4px);
+}
+.tarjeta-servicio:focus { outline: 3px solid var(--color-suave); outline-offset: 3px; }
+
+/* --- DATA LIST --- */
+.lista-datos {
+    background-color: rgba(33, 44, 61, 0.9);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde);
+    color: var(--color-suave);
+    padding: var(--espaciado-grande);
+}
+.lista-datos li { margin-bottom: var(--espaciado-medio); }
+.lista-datos li:last-child { margin-bottom: 0; }
+.lista-datos strong { color: var(--color-claro); }
+
+/* --- SITE FORMS --- */
+.formulario {
+    background-color: rgba(42, 54, 71, 0.9);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde);
+    padding: var(--espaciado-grande);
+}
+.grupo-formulario { margin-bottom: var(--espaciado-medio); }
+label { color: var(--color-claro); display: block; font-weight: bold; margin-bottom: var(--espaciado-chico); }
+.campo-activo { background-color: rgba(42, 54, 71, 0.9); border-color: var(--color-primario); }
+
+#telefonico {
+    background-color: rgba(42, 54, 71, 0.9);
+    border: 1px solid var(--color-borde);
+    border-left: 6px solid var(--color-primario);
+    border-radius: var(--radio-borde);
+    margin-bottom: var(--espaciado-medio);
+    padding: var(--espaciado-medio);
+}
+.campo-telefono { align-items: center; display: flex; }
+.prefijo-telefono {
+    align-items: center;
+    background-color: var(--color-primario);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde) 0 0 var(--radio-borde);
+    color: var(--color-claro);
+    display: flex;
+    gap: 6px;
+    padding: 0.375rem 0.75rem;
+    white-space: nowrap;
+}
+#telefonico input { border-radius: 0 var(--radio-borde) var(--radio-borde) 0; }
+
+/* --- FOOTER --- */
+.pie {
+    background-color: rgba(33, 44, 61, 0.95);
+    border-top: 1px solid var(--color-borde);
+    color: var(--color-suave);
+    padding: var(--espaciado-medio) 0;
+}
+.pie p { margin-bottom: 0; }
+
+/* --- UTILITIES --- */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+.d-none { display: none !important; }
+.texto-ayuda { color: var(--color-suave); font-size: 0.875rem; display: block; margin-top: var(--espaciado-chico); }
+.text-center { text-align: center; }
+
+/* --- GRID SYSTEM --- */
+.row { display: flex; flex-wrap: wrap; margin-left: -15px; margin-right: -15px; }
+.col-md-4, .col-md-6, .col-md-8 { padding-left: 15px; padding-right: 15px; width: 100%; }
+
+/* --- RESPONSIVE --- */
+@media (min-width: 768px) {
+    .col-md-4 { width: 33.333%; }
+    .col-md-6 { width: 50%; }
+    .col-md-8 { width: 66.666%; }
+}
+
+@media (max-width: 768px) {
+    .contenedor { padding-left: var(--espaciado-chico); padding-right: var(--espaciado-chico); }
+    .navegacion { flex-wrap: wrap; align-items: flex-start; }
+    .boton-hamburguesa { display: flex; }
+    .menu {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        order: 3;
+        margin-top: var(--espaciado-medio);
+        justify-content: flex-start;
+    }
+    .menu.menu-activo { display: flex; }
+    .menu a { padding: 12px 10px; border-bottom: 1px solid var(--color-borde); }
+    .menu a:last-child { border-bottom: none; }
+    .row { flex-direction: column; margin-left: 0; margin-right: 0; }
+    .col-md-4, .col-md-6, .col-md-8 { width: 100%; margin-bottom: var(--espaciado-medio); }
+    body { background-attachment: scroll; }
+    .hero h1 { font-size: 2rem; }
+}
+
+@media (max-width: 480px) {
+    h1 { font-size: 1.5rem; } h2 { font-size: 1.25rem; }
+    .hero h1 { font-size: 1.8rem; }
+    .acciones { flex-direction: column; }
+    .boton { text-align: center; width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* ============================================================
+   LOGIN - Specific styles for the login page
+   These rules override Bootstrap components
+   (.card, .form-control, .btn-primary) to match
+   the dark palette defined in the variables above.
+   Bootstrap ships with its own styles (light theme),
+   so we need to redefine them here, after
+   Bootstrap is loaded in the HTML.
+   ============================================================ */
+
+/* The card wrapping the login form */
+.card {
+    background-color: rgba(42, 54, 71, 0.95);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde);
+    color: var(--color-texto);
+}
+
+/* Labels for each field (Email, Password) */
+.form-label {
+    color: var(--color-claro);
+    font-weight: bold;
+}
+
+/* Bootstrap text input fields */
+.form-control {
+    background-color: rgba(33, 44, 61, 0.9);
+    border: 1px solid var(--color-borde);
+    color: var(--color-texto);
+}
+
+/* State when the user is typing inside the field */
+.form-control:focus {
+    background-color: rgba(33, 44, 61, 0.9);
+    border-color: var(--color-primario);
+    box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.30);
+    color: var(--color-texto);
+}
+
+.form-control::placeholder {
+    color: var(--color-suave);
+}
+
+/* Bootstrap primary button, now with the brand green color */
+.btn-primary {
+    background-color: var(--color-primario);
+    border-color: var(--color-primario);
+}
+.btn-primary:hover {
+    background-color: var(--color-terciario);
+    border-color: var(--color-terciario);
+}
+
+/* Success message, activated from script.js by removing d-none
+   and adding alerta-exito */
+#mensaje-resultado.alerta-exito {
+    background-color: rgba(29, 185, 84, 0.15);
+    border: 1px solid var(--color-primario);
+    border-radius: var(--radio-borde);
+    color: var(--color-primario);
+    padding: var(--espaciado-chico) var(--espaciado-medio);
+}
+
+/* Error message, activated from script.js by adding alerta-error */
+#mensaje-resultado.alerta-error {
+    background-color: rgba(220, 53, 69, 0.15);
+    border: 1px solid #dc3545;
+    border-radius: var(--radio-borde);
+    color: #f5a8ae;
+    padding: var(--espaciado-chico) var(--espaciado-medio);
+}

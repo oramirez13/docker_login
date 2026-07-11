@@ -1,0 +1,606 @@
+<!--To automatically generate the template
+use ! + Tab-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Summary</title>
+
+    <!--Bootstrap/css-->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+      crossorigin="anonymous"
+    />
+
+    <!--css/style.css-->
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- jQuery is loaded here, in the head, because the session -->
+    <!-- verification script runs at the start of the body -->
+    <!-- and needs $.ajax available at that moment. -->
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.min.js"
+      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+      crossorigin="anonymous"
+    ></script>
+  </head>
+
+  <body>
+    <!-- ============================================================
+         BLOCK 1: Session verification when the page loads
+         ============================================================
+         This script runs IMMEDIATELY when dashboard.html is opened.
+         Its job is to verify if the user is authenticated before
+         showing any page content.
+
+         The flow is:
+         1. Read the token from sessionStorage
+         2. If there is no token -> redirect to login
+         3. If there is a token -> send it to the server to verify
+         4. If the server accepts it -> show the page
+         5. If the server rejects it -> clear everything and go back to login
+
+         The reason this goes in the body (and not in script.js) is
+         because it has to run BEFORE the browser renders the
+         HTML content below. If the token is invalid, the user
+         should never see what is on this page.
+    -->
+    <script>
+      // API_URL: same variable as in script.js, defines the base
+      // address of the backend server. If the frontend and backend are
+      // on the same server, it can be left as an empty string "".
+      var API_URL = "http://127.0.0.1:5000";
+
+      // sessionStorage.getItem() reads a value from the browser's
+      // temporary storage. The argument "tokenSesion" is the key we
+      // configured in script.js when the user logged in.
+      // If the user never logged in, or closed the tab, this
+      // returns null.
+      var token = sessionStorage.getItem("tokenSesion");
+
+      if (!token) {
+        // If token is null or an empty string, it means there is no
+        // active session. We use location.replace() instead of
+        // location.href because replace() doesn't leave the current page
+        // in the browser's history, so the user can't go back
+        // with the browser's back button.
+        window.location.replace("index.html");
+      } else {
+        // If there is a token, we send it to the server for verification.
+        // The server is the only authority that can say whether a token
+        // is valid: it signs tokens with its SECRET_KEY, and only someone
+        // with that key can confirm they haven't been tampered with.
+
+        // $.ajax with synchronous mode (async: false).
+        // "Synchronous" means the browser FREEZES the entire page
+        // (doesn't respond to clicks, can't scroll, the cursor
+        // turns into a waiting state) until this request finishes.
+        //
+        // In production this is NEVER done because it destroys the user
+        // experience. It's used here only so the learning flow
+        // is linear and easy to follow: first verify, then show.
+        //
+        // The professional approach would be async: true (which is the default)
+        // and showing a "loading..." indicator while waiting for the response.
+        $.ajax({
+          // We use API_URL so that if the server address changes,
+          // only one line needs to be changed instead of searching the whole file.
+          url: API_URL + "/verificar-sesion",
+          method: "GET",
+          async: false,
+
+          // beforeSend is a callback that jQuery executes JUST BEFORE
+          // sending the HTTP request to the server. The "xhr" parameter
+          // is the XMLHttpRequest object, which represents the connection
+          // to the server. With setRequestHeader() we add the
+          // "Authorization" header to the request.
+          //
+          // The "Bearer <token>" format is a standard (RFC 6750) that
+          // servers expect to find. The token_required decorator
+          // in api.py looks for exactly this header and this format.
+          beforeSend: function (xhr) {
+            xhr.setRequestHeader("Authorization", "Bearer " + token);
+          },
+
+          // success runs if the server responded with 200 OK.
+          // In this case we don't need to do anything, because the page's
+          // HTML content is already in the code and will be shown
+          // automatically once this script finishes.
+          success: function () {
+            // We intentionally do nothing here. If we reached this
+            // point, it means the token is valid and the page can
+            // be safely displayed.
+          },
+
+          // error runs if the server responded with any
+          // 4xx code (401, 403, etc.) or 5xx code (500, etc.).
+          error: function () {
+            // If the token is not valid (expired, corrupt, or doesn't exist
+            // in the database), we clear everything in
+            // sessionStorage related to the session, and redirect
+            // to login. This ensures no residual data remains
+            // that could confuse the user or the system.
+            sessionStorage.removeItem("tokenSesion");
+            sessionStorage.removeItem("nombreUsuario");
+
+            // replace() instead of href to not leave this page
+            // in the navigation history.
+            window.location.replace("index.html");
+          },
+        });
+      }
+    </script>
+
+    <!-- all HTML content goes here -->
+
+    <!-- ============================================================
+         BLOCK 2: Header with real logout button
+         ============================================================
+         Before, the "Back to login" button was just an <a> link that
+         redirected to index.html. The problem was that it didn't clear
+         session data, so if the user went back (with the browser's
+         back button), the dashboard was still visible because the token
+         remained in sessionStorage.
+
+         Now the button has id="boton-logout" and an onclick that calls
+         logout(), a function that clears sessionStorage COMPLETELY
+         and then redirects. This is what is known as a "real logout":
+         the client destroys its own session and the server is free
+         to accept a new login.
+    -->
+    <header class="encabezado">
+      <div class="contenedor navegacion">
+        <span class="marca" id="texto-bienvenida"
+          >Docker + Flask Project Summary</span
+        >
+        <!--
+          The logout button now has:
+          - id="boton-logout": to be selectable with jQuery if needed
+          - onclick="cerrarSesion()": calls the JavaScript function that clears the session
+          - class="boton boton-secundario": keeps the same visual style as before
+        -->
+        <a href="#" id="boton-logout" onclick="cerrarSesion()" class="boton boton-secundario">Log out</a>
+      </div>
+    </header>
+
+    <!-- main section with the full walkthrough, step by step -->
+    <section class="seccion">
+      <div class="contenedor">
+        <h1 class="text-center">From zero to a complete CRUD with Docker</h1>
+        <p class="text-center">
+          This summary documents every step taken in this project, from
+          installing Docker to this very login page working.
+        </p>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>1. Verify and install Docker</h3>
+          <p>
+            Docker was confirmed to be already installed on Arch Linux, but the
+            service was disabled and inactive. It was permanently enabled with
+            <code>sudo systemctl enable --now docker</code>, which starts it
+            and configures it to boot on every system restart.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>2. Security decision: keep sudo</h3>
+          <p>
+            Running Docker without <code>sudo</code> failed due to
+            permissions, since the user did not belong to the
+            <code>docker</code> group. It was consciously decided to keep
+            requiring <code>sudo</code> for every command, because belonging
+            to that group is effectively equivalent to root privileges.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>3. First container: hello world in Python</h3>
+          <p>
+            A basic <code>Dockerfile</code> was created with the instructions
+            <code>FROM</code>, <code>WORKDIR</code>, <code>COPY</code> and
+            <code>CMD</code>, fixing along the way an incomplete
+            <code>COPY</code> and an invalid image name due to uppercase
+            letters and spaces.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>4. First API with Flask</h3>
+          <p>
+            A virtual environment was created, Flask was installed, and an API
+            was written with routes <code>/</code> and <code>/saludo</code>,
+            returning JSON with <code>jsonify</code>, first run outside Docker
+            to understand Flask on its own.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>5. Fix insecure Flask configuration</h3>
+          <p>
+            It was identified that <code>debug=True</code> together with
+            <code>host="0.0.0.0"</code> exposes a dangerous interactive
+            debugger on the local network. It was changed to
+            <code>debug=False</code>, keeping <code>host="0.0.0.0"</code>
+            because it is necessary for Docker.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>6. Dockerize the API</h3>
+          <p>
+            <code>requirements.txt</code> was generated with
+            <code>pip freeze</code>, and a <code>Dockerfile</code> was written
+            that installs dependencies before copying the code, taking
+            advantage of Docker's cache. Port 5000 was exposed and tested with
+            <code>docker run -p 5000:5000</code>.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>7. Database review</h3>
+          <p>
+            The concepts of table, row, column and primary key were reviewed,
+            along with the four CRUD operations (Create, Read, Update, Delete)
+            in SQL, highlighting the risk of omitting
+            <code>WHERE</code> in <code>UPDATE</code> or <code>DELETE</code>.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>8. Separate passwords from code with .env</h3>
+          <p>
+            It was explained why you should never hardcode passwords in code,
+            as they would be exposed forever in Git history. A
+            <code>.env</code> file was created with the MySQL credentials,
+            protected with <code>.gitignore</code>.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>9. MySQL and the API together with docker-compose</h3>
+          <p>
+            Two services were defined in <code>docker-compose.yml</code>:
+            <code>basedatos</code> (MySQL) and <code>api</code> (Flask), using
+            <code>env_file</code> for credentials,
+            <code>volumes</code> for persistence, and
+            <code>depends_on</code> for startup order.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>10. Centralize configuration in config.py</h3>
+          <p>
+            Configuration logic was separated into its own file, with a
+            <code>Config</code> class that reads environment variables once,
+            following the pattern used in the industry.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>11. Diagnose startup error with healthcheck</h3>
+          <p>
+            The API failed to connect because <code>depends_on</code> only
+            waits for the MySQL container to start, not for it to be ready. A
+            <code>healthcheck</code> was added with
+            <code>mysqladmin ping</code> and
+            <code>condition: service_healthy</code>, forcing the API to
+            wait until MySQL was actually responding.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>12. Complete CRUD: Create, Read, Update, Delete</h3>
+          <p>
+            The four routes were implemented: <code>POST /usuarios</code> to
+            create, <code>GET /usuarios</code> to list,
+            <code>PUT /usuarios/id</code> to edit, and
+            <code>DELETE /usuarios/id</code> to delete. All using
+            parameterized queries (<code>%s</code>) to prevent SQL injection,
+            and checking existence before editing or deleting.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>13. Gunicorn as production server</h3>
+          <p>
+            Flask's development server was replaced with Gunicorn,
+            moving <code>crear_tabla()</code> outside the
+            <code>if __name__ == "__main__":</code> block so it would also
+            run when Gunicorn imports the application, instead of running it
+            directly.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>14. Login with hashed passwords</h3>
+          <p>
+            A <code>password</code> column was added to the table, using
+            <code>generate_password_hash</code> to never store passwords in
+            plain text, and a <code>POST /login</code> route that compares
+            with <code>check_password_hash</code>, always returning the same
+            generic error message to not reveal which emails exist.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>15. Frontend with skeletor.html, Bootstrap and jQuery</h3>
+          <p>
+            A login form was built following the base template
+            <code>skeletor.html</code> and the dark palette of custom CSS,
+            connected to the API via Ajax with jQuery, enabling CORS on the
+            backend with <code>flask-cors</code> to allow communication
+            between different origins.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>16. Diagnosis: Gunicorn logs</h3>
+          <p>
+            It was discovered that Gunicorn does not log requests by default,
+            unlike Flask's development server. <code>--access-logfile -</code>
+            was added to Gunicorn's command to see each request in real time,
+            confirming the complete flow: form, OPTIONS request from CORS,
+            POST, and successful response.
+          </p>
+        </div>
+
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>17. Real authentication with JWT</h3>
+          <p>
+            The simple <code>sessionStorage</code> flag was replaced with a
+            JWT token signed by the server with <code>PyJWT</code> and a
+            <code>SECRET_KEY</code> stored in <code>.env</code>. The
+            <code>/login</code> route generates the token on authentication,
+            and a <code>@token_required</code> decorator protects routes like
+            <code>/verificar-sesion</code>, verifying the token signature on
+            every request. This page now queries the server before
+            displaying itself, instead of relying on a local flag alone.
+          </p>
+        </div>
+
+        <!-- ============================================================
+             STEP 18: Real logout - clear session on the client
+             ============================================================
+             What problem does it solve:
+             Before, the "Back to login" link just redirected to index.html.
+             If the user closed the tab and reopened it, or used the
+             browser's back button, the dashboard was still visible
+             because the token and name remained in sessionStorage.
+
+             What is sessionStorage vs localStorage:
+             - sessionStorage: data ONLY lasts while the tab is
+               open. If the user closes the tab, everything is deleted.
+             - localStorage: data persists INDEFINITELY until
+               the code manually deletes it or the user clears browser
+               data.
+
+             Why sessionStorage alone is not enough:
+             Although sessionStorage is cleared when the tab is closed, the user
+             could have multiple tabs open simultaneously. In that
+             case, closing one tab does NOT clear the token in the others. A
+             "real logout" must explicitly clear every key in
+             sessionStorage.
+
+             What the logout() function does:
+             1. sessionStorage.clear() deletes ALL keys from the temporary
+                storage of the current tab. It's faster than calling
+                removeItem() one by one, and guarantees nothing is left.
+             2. window.location.replace() redirects to index.html without leaving
+                the dashboard in the navigation history.
+        -->
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>18. Real logout: clear session on the client</h3>
+          <p>
+            Before, the "Back to login" link just redirected without clearing
+            anything. If the user went back with the browser button, the
+            dashboard was still visible because the token remained in
+            <code>sessionStorage</code>. The link was replaced with a button
+            that calls a <code>logout()</code> function which executes
+            <code>sessionStorage.clear()</code> before redirecting, ensuring
+            no residual session data remains. The
+            <code>window.location.replace()</code> function is used instead of
+            <code>href</code> because it doesn't leave the dashboard in the
+            history, preventing the back button from showing it again.
+          </p>
+        </div>
+
+        <!-- ============================================================
+             STEP 19: Protect the user listing with a token
+             ============================================================
+             What problem does it solve:
+             The GET /usuarios route was the only CRUD route that did not
+             require a token. Even without returning passwords, the list of
+             emails and IDs of all users is information that only
+             an authenticated user should be able to see.
+
+             What changed in api.py:
+             The @token_required decorator was added to the
+             list_users() function and token_data was added as the first
+             parameter. This is consistent with all other protected
+             CRUD routes: POST /usuarios, PUT, and DELETE.
+
+             Why it matters for security:
+             In a real environment, the user listing allows an attacker to:
+             1. Enumerate valid email addresses for phishing attacks
+             2. Know the IDs to try accessing other endpoints
+             3. Discover the database structure
+             Protecting this route is one more layer of defense in depth.
+          -->
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>19. Protect the user listing with a token</h3>
+          <p>
+            The <code>GET /usuarios</code> route was the only CRUD route that
+            did not require authentication. Even without returning passwords,
+            the list of emails and IDs is sensitive information that allows
+            enumerating valid users. The <code>@token_required</code>
+            decorator and <code>token_data</code> as the first parameter were
+            added, making all CRUD routes require a token. This follows the
+            principle of defense in depth: each security layer protects even
+            if another one fails.
+          </p>
+        </div>
+
+        <!-- ============================================================
+             STEP 20: Configurable API URL in the frontend
+             ============================================================
+             What problem does it solve:
+             Before, both script.js and dashboard.html had the server URL
+             hardcoded as "http://127.0.0.1:5000". If the backend was
+             moved to a different server or port, that string had to be
+             found and replaced in multiple files.
+
+             What is the API_URL variable:
+             It is a global JavaScript variable defined at the start of each
+             file that makes requests to the backend. It contains the base
+               address of the server (without trailing slash). Specific routes
+             (/login, /verificar-sesion, /usuarios) are concatenated after.
+
+             Benefits:
+             1. Changing the server address requires editing ONE single
+                line in each file.
+             2. You can configure different URLs for development (localhost)
+                and production (real domain) without touching the rest of the code.
+             3. It facilitates testing: you can point to a test server
+                by only changing API_URL.
+
+             In real production, this variable normally comes from a build
+             configuration file (like a frontend .env) and is NEVER
+             hardcoded directly in the JavaScript.
+          -->
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>20. Configurable API URL in the frontend</h3>
+          <p>
+            Both <code>script.js</code> and <code>dashboard.html</code> had
+            the server URL hardcoded as
+            <code>http://127.0.0.1:5000</code>. It was extracted to a global
+            <code>API_URL</code> variable at the start of each file, so that
+            if the backend changes address, only one line needs editing.
+            Specific routes (<code>/login</code>,
+            <code>/verificar-sesion</code>) are concatenated to this variable.
+            In real production, this variable comes from a build
+            configuration file, not written directly in the code.
+          </p>
+        </div>
+
+        <!-- ============================================================
+             STEP 21: Remove dead code and fix .gitignore
+             ============================================================
+             What problem does it solve:
+             The app.py file contained only a print("Hello World from a
+             Docker container") and was not used by the Dockerfile
+             or by any other project file. The Dockerfile runs
+             "gunicorn ... api:app", which points to the "app" object inside
+             api.py, not app.py.
+
+             Why it's important to remove dead code:
+             1. It confuses whoever reads the project: they don't know if app.py
+                is needed or not.
+             2. If a CI/CD pipeline is ever created, unused files
+                add noise to logs and can cause errors.
+             3. In security, every file is a potential attack
+                surface: if it's not used, it shouldn't exist.
+
+             The .gitignore was also fixed: the virtual folder is called
+             .venv/ (with a dot) but .gitignore only excluded venv/ (without
+             a dot), which meant .venv/ would be uploaded to the Git
+             repository if git init was run.
+          -->
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>21. Clean up dead code and fix .gitignore</h3>
+          <p>
+            <code>app.py</code> was removed, which contained a single
+            <code>print()</code> and was not used by the Dockerfile or any
+            other file. The Dockerfile runs
+            <code>gunicorn ... api:app</code>, which points to the
+            <code>app</code> object inside <code>api.py</code>.
+            <code>.gitignore</code> was also fixed: the virtual folder is
+            called <code>.venv/</code> (with a dot), but the file only
+            excluded <code>venv/</code> (without a dot), which meant the
+            virtual environment would be uploaded to the repository.
+          </p>
+        </div>
+
+        <!-- final note with security warning, using .lista-datos -->
+        <div class="lista-datos" style="margin-top: 32px">
+          <p>
+            <strong>Note:</strong> the token is stored in
+            <code>sessionStorage</code>, which is still vulnerable to
+            XSS attacks if an attacker manages to inject malicious JavaScript into
+            the page. The more secure alternative, <code>httpOnly</code>
+            cookies, requires more advanced configuration and is left as
+            pending for a next level of learning.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="pie">
+      <div class="contenedor text-center">
+        <p>
+          Practice project: Docker, Flask, MySQL and frontend with Bootstrap.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Scripts -->
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- js/script.js -->
+    <script src="js/script.js" type="text/javascript"></script>
+
+    <!-- ============================================================
+         BLOCK 3: Show user name and logout function
+         ============================================================
+         This script runs AFTER all the HTML is already loaded
+         (because it's at the end of the body). Its job is:
+         1. Read the name from sessionStorage and show it in the header
+         2. Define the logout() function that the logout button calls
+    -->
+    <script>
+      // --- Show the user's name in the header ---
+
+      // sessionStorage.getItem() reads the name that was saved during
+      // login (in script.js, line sessionStorage.setItem("nombreUsuario", ...)).
+      var nombreGuardado = sessionStorage.getItem("nombreUsuario");
+
+      // If there is a saved name, we show it in the header.
+      // getElementById() finds an HTML element by its id attribute.
+      // .textContent replaces the element's internal text, in this
+      // case "Docker + Flask Project Summary" with "Welcome, Juan".
+      if (nombreGuardado) {
+        document.getElementById("texto-bienvenida").textContent =
+          "Welcome, " + nombreGuardado;
+      }
+
+      // --- Real logout function ---
+
+      // This function is called when the user clicks "Log out".
+      // Its job is simple but critical:
+      // 1. Clear ALL session information from the browser
+      // 2. Redirect to login
+      //
+      // sessionStorage.clear() deletes all keys in sessionStorage
+      // for this tab. This is more secure than calling removeItem()
+      // one by one, because it guarantees no key is forgotten. If
+      // tomorrow a third key is added (for example, "userRole"),
+      // clear() deletes it automatically without having to modify this function.
+      //
+      // window.location.replace() redirects WITHOUT leaving this page in the
+      // browser's history. This is important because if we used
+      // location.href, the user could click the browser's "Back"
+      // button and return to the dashboard, which would be empty and confusing.
+      function cerrarSesion() {
+        sessionStorage.clear();
+        window.location.replace("index.html");
+      }
+    </script>
+  </body>
+</html>

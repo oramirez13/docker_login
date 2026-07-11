@@ -1,0 +1,41 @@
+services:
+  basedatos:
+    image: mysql:8.0
+    env_file:
+      - .env
+    volumes:
+      - datos_mysql:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+    # healthcheck defines a test that Docker runs periodically
+    # to check if the container is truly ready, not just started.
+    healthcheck:
+      # test is the command Docker runs inside the container.
+      # mysqladmin ping is a utility included in the MySQL image
+      # that only responds when the server accepts connections.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      # interval: how often the test is repeated.
+      interval: 5s
+      # timeout: how long each attempt waits before being marked as failed.
+      timeout: 5s
+      # retries: how many times the test can fail before the container
+      # is marked as unhealthy.
+      retries: 10
+
+  api:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+
+    # depends_on now uses a condition instead of just the service name.
+    # condition: service_healthy tells Docker to wait until the
+    # basedatos healthcheck responds correctly before starting api.
+    depends_on:
+      basedatos:
+        condition: service_healthy
+
+volumes:
+  datos_mysql:
