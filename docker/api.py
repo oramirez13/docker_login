@@ -23,7 +23,11 @@ import mysql.connector
 from config import Config
 
 app = Flask(__name__)
-CORS(app)
+# CORS is configured to accept requests ONLY from http://localhost:8080,
+# which is where the frontend is served (python -m http.server 8080).
+# This prevents other websites from making unauthorized requests to our API.
+# In production, change this to the actual domain (e.g., "https://mydomain.com").
+CORS(app, origins=["http://localhost:8080"])
 
 
 def get_connection():
@@ -46,6 +50,21 @@ def create_table():
             nombre VARCHAR(100) NOT NULL,
             correo VARCHAR(150) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL
+        )
+    """
+    )
+    # Table to track failed login attempts for brute force protection.
+    # Each row stores: the email, the number of consecutive failed attempts,
+    # when the first attempt occurred, and when the account is blocked until.
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS intentos_login (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            correo VARCHAR(150) NOT NULL,
+            intentos INT NOT NULL DEFAULT 1,
+            primer_intento DATETIME NOT NULL,
+            bloqueado_hasta DATETIME DEFAULT NULL,
+            UNIQUE KEY idx_correo (correo)
         )
     """
     )
@@ -235,22 +254,78 @@ def login():
 
     connection = get_connection()
     cursor = connection.cursor()
+
+    # --- BRUTE FORCE PROTECTION ---
+    # Before checking credentials, we verify if this email is currently
+    # blocked due to too many failed attempts.
+    # MAX_INTENTOS = maximum failed attempts allowed before blocking.
+    # TIEMPO_BLOQUEO = minutes the account stays blocked after exceeding the limit.
+    MAX_INTENTOS = 5
+    TIEMPO_BLOQUEO = 15
+
+    cursor.execute(
+        "SELECT intentos, bloqueado_hasta FROM intentos_login WHERE correo = %s",
+        (correo,),
+    )
+    registro = cursor.fetchone()
+
+    if registro:
+        intentos, bloqueado_hasta = registro
+
+        # If the account is blocked and the block time has not expired,
+        # we reject the request immediately with 429 (Too Many Requests).
+        if bloqueado_hasta and bloqueado_hasta > datetime.datetime.utcnow():
+            remaining = bloqueado_hasta - datetime.datetime.utcnow()
+            remaining_seconds = int(remaining.total_seconds())
+            cursor.close()
+            connection.close()
+            return (
+                jsonify(
+                    {
+                        "error": "Too many failed attempts, try again later",
+                        "retry_after_seconds": remaining_seconds,
+                    }
+                ),
+                429,
+            )
+
+    # --- CREDENTIAL VERIFICATION ---
+    # This is the original logic: search the user by email and compare
+    # the password hash. The generic error message prevents user enumeration.
     cursor.execute(
         "SELECT id, nombre, correo, password FROM usuarios WHERE correo = %s", (correo,)
     )
     user = cursor.fetchone()
-    cursor.close()
-    connection.close()
 
     generic_error = jsonify({"error": "Incorrect email or password"}), 401
 
     if user is None:
+        # If the user does not exist, we still register a failed attempt
+        # to prevent an attacker from detecting valid emails by checking
+        # whether the counter increments.
+        _registrar_intento_fallido(cursor, correo, MAX_INTENTOS, TIEMPO_BLOQUEO)
+        connection.commit()
+        cursor.close()
+        connection.close()
         return generic_error
 
     user_id, nombre, correo_bd, password_hash = user
 
     if not check_password_hash(password_hash, password):
+        # Wrong password: register the failed attempt and block if limit reached.
+        _registrar_intento_fallido(cursor, correo, MAX_INTENTOS, TIEMPO_BLOQUEO)
+        connection.commit()
+        cursor.close()
+        connection.close()
         return generic_error
+
+    # --- SUCCESSFUL LOGIN ---
+    # If credentials are correct, we clear any failed attempt records
+    # for this email so the counter resets.
+    cursor.execute("DELETE FROM intentos_login WHERE correo = %s", (correo,))
+    connection.commit()
+    cursor.close()
+    connection.close()
 
     # We build the token payload. "exp" is a special key
     # that jwt automatically recognizes as an expiration date.
@@ -278,6 +353,64 @@ def login():
         ),
         200,
     )
+
+
+def _registrar_intento_fallido(cursor, correo, max_intentos, tiempo_bloqueo):
+    # This helper function handles the logic of recording a failed login attempt.
+    # It is called from the login route when credentials are invalid.
+    #
+    # Parameters:
+    #   cursor: the active database cursor
+    #   correo: the email that failed to authenticate
+    #   max_intentos: the maximum number of attempts allowed
+    #   tiempo_bloqueo: minutes to block after exceeding the limit
+    #
+    # If no record exists for this email, a new one is created with 1 attempt.
+    # If a record exists and the block period has expired, the counter resets.
+    # If a record exists and is not blocked, the counter increments.
+    # If the counter reaches max_intentos, the account is blocked.
+
+    now = datetime.datetime.utcnow()
+
+    cursor.execute(
+        "SELECT intentos, primer_intento FROM intentos_login WHERE correo = %s",
+        (correo,),
+    )
+    registro = cursor.fetchone()
+
+    if registro is None:
+        # First failed attempt for this email: create a new record.
+        cursor.execute(
+            "INSERT INTO intentos_login (correo, intentos, primer_intento) "
+            "VALUES (%s, 1, %s)",
+            (correo, now),
+        )
+    else:
+        intentos, primer_intento = registro
+
+        # If more than tiempo_bloqueo minutes have passed since the first
+        # attempt in this window, we reset the counter.
+        if (now - primer_intento).total_seconds() > tiempo_bloqueo * 60:
+            cursor.execute(
+                "UPDATE intentos_login SET intentos = 1, primer_intento = %s, "
+                "bloqueado_hasta = NULL WHERE correo = %s",
+                (now, correo),
+            )
+        else:
+            # Increment the counter. If it reaches the limit, block the account.
+            nuevos_intentos = intentos + 1
+            if nuevos_intentos >= max_intentos:
+                bloqueado_hasta = now + datetime.timedelta(minutes=tiempo_bloqueo)
+                cursor.execute(
+                    "UPDATE intentos_login SET intentos = %s, "
+                    "bloqueado_hasta = %s WHERE correo = %s",
+                    (nuevos_intentos, bloqueado_hasta, correo),
+                )
+            else:
+                cursor.execute(
+                    "UPDATE intentos_login SET intentos = %s WHERE correo = %s",
+                    (nuevos_intentos, correo),
+                )
 
 
 # ============================================================

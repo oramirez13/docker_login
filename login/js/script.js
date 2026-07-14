@@ -123,12 +123,23 @@ $(document).ready(function () {
                 // response doesn't have a specific "error" field.
                 var mensajeError = "An error occurred while logging in";
 
+                // Status 429 = Too Many Requests. This means the account
+                // is temporarily blocked due to too many failed login attempts.
+                // We show a specific message with the remaining lockout time.
+                if (peticion.status === 429) {
+                    var retrySeconds = peticion.responseJSON.retry_after_seconds;
+                    var minutes = Math.floor(retrySeconds / 60);
+                    var seconds = retrySeconds % 60;
+                    mensajeError = "Account temporarily locked. Try again in " +
+                        minutes + "m " + seconds + "s";
+                }
+
                 // peticion.responseJSON contains the server's response
                 // already parsed as a JavaScript object. If it exists and has
                 // an "error" field, we use that message instead of the generic one.
                 // This allows the backend to send messages like
                 // "Incorrect email or password" directly.
-                if (peticion.responseJSON && peticion.responseJSON.error) {
+                else if (peticion.responseJSON && peticion.responseJSON.error) {
                     mensajeError = peticion.responseJSON.error;
                 }
 

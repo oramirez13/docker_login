@@ -147,7 +147,9 @@ This is the largest file: it contains the Flask API with:
 - `@token_required` decorator to protect routes with JWT
 - MySQL connection using mysql.connector
 - Password hashing with werkzeug.security
-- Automatic creation of the `usuarios` table on startup
+- Automatic creation of the `usuarios` and `intentos_login` tables on startup
+- Brute force protection: rate limiting with account lockout (5 attempts / 15 minutes)
+- CORS restricted to `http://localhost:8080`
 
 **The complete file is at `docker_login/docker/api.py`.** All functions and routes are documented with inline comments.
 
@@ -379,6 +381,87 @@ curl -X POST http://127.0.0.1:5000/registro \
 2. You should return to the login
 3. Attempt to access `dashboard.html` directly via URL
 4. The page should redirect to the login, since the token was removed from `sessionStorage`
+
+---
+
+## SECURITY FEATURES
+
+### 1. Brute Force Protection (Rate Limiting)
+
+The API includes a rate limiting system to protect against brute force attacks on the login endpoint.
+
+**How it works:**
+
+- A new table `intentos_login` is automatically created in MySQL when the API starts
+- Each failed login attempt is recorded in this table with the email and timestamp
+- After **5 consecutive failed attempts**, the account is blocked for **15 minutes**
+- During the block period, all login attempts return HTTP 429 (Too Many Requests)
+- When credentials are correct, the failed attempt counter resets to zero
+- The block time is calculated from the first failed attempt in the window
+
+**Configuration (in `api.py`):**
+
+```python
+MAX_INTENTOS = 5      # Maximum failed attempts before blocking
+TIEMPO_BLOQUEO = 15   # Block duration in minutes
+```
+
+**To modify the limits:**
+
+```python
+# In api.py, inside the login() function:
+MAX_INTENTOS = 10     # Allow 10 attempts before blocking
+TIEMPO_BLOQUEO = 30   # Block for 30 minutes
+```
+
+**Frontend behavior:**
+
+The login form (`script.js`) detects HTTP 429 responses and shows a message with the remaining lockout time (e.g., "Account temporarily locked. Try again in 14m 32s").
+
+**To reset a blocked account manually:**
+
+```sql
+-- Connect to MySQL
+sudo docker compose exec basedatos mysql -u api_usuario -p
+
+-- Select the database
+USE practica_db;
+
+-- View failed attempts
+SELECT * FROM intentos_login;
+
+-- Manually unblock an email
+DELETE FROM intentos_login WHERE correo = 'user@example.com';
+```
+
+### 2. CORS Restriction
+
+CORS (Cross-Origin Resource Sharing) is configured to accept requests **only** from the frontend origin.
+
+**Current configuration:**
+
+```python
+CORS(app, origins=["http://localhost:8080"])
+```
+
+This means only `http://localhost:8080` (where the frontend is served) can make Ajax requests to the API. Any other origin (a malicious website, Postman, curl from another domain) will be blocked by the browser.
+
+**To change the allowed origin:**
+
+```python
+# For a specific domain:
+CORS(app, origins=["https://mydomain.com"])
+
+# For multiple domains:
+CORS(app, origins=["https://mydomain.com", "https://admin.mydomain.com"])
+
+# For development only (NOT recommended for production):
+CORS(app, origins=["*"])
+```
+
+**Why this matters:**
+
+Without CORS restriction, any website could make requests to your API using the user's browser. Even though JWT tokens are not sent automatically like cookies, a malicious site could still attempt to exploit other vulnerabilities or perform denial-of-service attacks.
 
 ---
 
