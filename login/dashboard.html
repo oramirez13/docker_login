@@ -172,7 +172,8 @@ use ! + Tab-->
         <h1 class="text-center">From zero to a complete CRUD with Docker</h1>
         <p class="text-center">
           This summary documents every step taken in this project, from
-          installing Docker to this very login page working.
+          installing Docker to this very login page working. Includes
+          brute force protection and CORS restriction.
         </p>
 
         <div class="tarjeta" style="margin-bottom: 24px">
@@ -520,6 +521,99 @@ use ! + Tab-->
             called <code>.venv/</code> (with a dot), but the file only
             excluded <code>venv/</code> (without a dot), which meant the
             virtual environment would be uploaded to the repository.
+          </p>
+        </div>
+
+        <!-- ============================================================
+             STEP 22: Brute force protection with rate limiting
+             ============================================================
+             What problem does it solve:
+             Before, the /login endpoint had no limit on failed attempts.
+             An attacker could send thousands of requests per second trying
+             different passwords (brute force attack) without any restriction.
+
+             How it works:
+             1. A new table "intentos_login" is created in MySQL when the
+                API starts, storing: email, failed attempt count, timestamp
+                of first attempt, and block expiration time.
+             2. Each failed login increments the counter for that email.
+             3. After 5 consecutive failed attempts, the account is blocked
+                for 15 minutes. During this period, ALL login attempts
+                return HTTP 429 (Too Many Requests).
+             4. When credentials are correct, the counter resets to zero.
+             5. The block time is calculated from the first failed attempt,
+                so the 15-minute window starts fresh with each new attempt.
+
+             Why MySQL instead of memory:
+             Flask with Gunicorn runs 4 workers, each with its own memory.
+             If we stored attempts in a Python dictionary, an attacker
+             could bypass the block by hitting different workers. MySQL is
+             shared by all workers, so the block applies globally.
+
+             Frontend behavior:
+             script.js detects HTTP 429 responses and shows a message with
+             the remaining lockout time (e.g., "Account temporarily locked.
+             Try again in 14m 32s").
+          -->
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>22. Brute force protection with rate limiting</h3>
+          <p>
+            The <code>/login</code> endpoint had no limit on failed attempts,
+            allowing an attacker to try unlimited passwords per second. A
+            <code>intentos_login</code> table was added to MySQL to track
+            failed attempts per email. After 5 consecutive failures, the
+            account is blocked for 15 minutes and returns HTTP 429. The
+            counter resets on successful login. MySQL is used instead of
+            in-memory storage because Gunicorn runs 4 workers that share
+            the database but not memory, so a dictionary-based approach
+            would be bypassed by hitting different workers.
+          </p>
+        </div>
+
+        <!-- ============================================================
+             STEP 23: CORS restriction to specific origin
+             ============================================================
+             What problem does it solve:
+             Before, CORS was configured as CORS(app) without parameters,
+             which defaults to accepting requests from ANY origin. This
+             means any website on the internet could make Ajax requests to
+             our API from a browser.
+
+             What is CORS:
+             CORS (Cross-Origin Resource Sharing) is a browser security
+             mechanism that controls which websites can make HTTP requests
+             to a different domain. Without CORS, the browser blocks all
+             cross-origin requests by default. CORS(app) with origins="*"
+             removes this restriction entirely.
+
+             What changed:
+             CORS was changed from CORS(app) to:
+             CORS(app, origins=["http://localhost:8080"])
+             This means only the frontend served at localhost:8080 can
+             communicate with the API. Any other origin is blocked by the
+             browser before the request even reaches the server.
+
+             Why it matters:
+             1. A malicious website could try to exploit vulnerabilities
+                in the API
+             2. A malicious website could perform denial-of-service attacks
+                by flooding the API with requests from users' browsers
+             3. Restricting CORS is a defense-in-depth measure that limits
+                the attack surface
+
+             In production, origins should be changed to the actual domain
+             (e.g., "https://mydomain.com").
+          -->
+        <div class="tarjeta" style="margin-bottom: 24px">
+          <h3>23. CORS restriction to specific origin</h3>
+          <p>
+            CORS was configured as <code>CORS(app)</code>, which accepts
+            requests from any website. It was changed to
+            <code>CORS(app, origins=["http://localhost:8080"])</code>,
+            allowing only the frontend origin to communicate with the API.
+            This prevents malicious websites from making unauthorized
+            requests using the user's browser. In production, the origin
+            should be changed to the actual domain.
           </p>
         </div>
 
