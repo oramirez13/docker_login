@@ -1,8 +1,7 @@
-# Step-by-step Guide: Docker + Flask + MySQL + Login Project
-# Reproduce from scratch on any Linux machine
+# Docker + Flask + MySQL: Secure Login System
 
-This guide documents the entire process to set up the complete project.
-Each step includes what to do, why it is done, and what result to expect.
+Step-by-step guide to reproduce this project from scratch on any Linux machine.
+Each step includes the action to perform, the technical reason behind it, and the expected result.
 
 ---
 
@@ -27,8 +26,7 @@ sudo systemctl status docker
 sudo systemctl enable --now docker
 ```
 
-**Why sudo?** Belonging to the `docker` group is equivalent to root privileges.
-Keeping sudo is a conscious security decision.
+**Note:** The `docker` group grants root-equivalent privileges. Using `sudo` for every command is a deliberate choice to avoid adding the user to that group.
 
 ---
 
@@ -72,9 +70,9 @@ CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--access-logfile",
 **What each line does:**
 - `FROM python:3.12-slim`: uses a lightweight Python image as base
 - `WORKDIR /app`: creates and enters the /app folder inside the container
-- `COPY requirements.txt .`: copies the dependencies file BEFORE the code
-- `RUN pip install...`: installs dependencies (cached if requirements.txt has not changed)
-- `COPY config.py .` and `COPY api.py .`: copies the source code
+- `COPY requirements.txt .`: copies the dependencies file before the source code (layer caching optimization)
+- `RUN pip install...`: installs dependencies. This layer is cached as long as requirements.txt has not changed
+- `COPY config.py .` and `COPY api.py .`: copies the application source code
 - `EXPOSE 5000`: documents that the container listens on port 5000
 - `CMD [...]`: the command executed when the container starts (Gunicorn)
 
@@ -136,9 +134,7 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY")
 ```
 
-**Why a class?** It centralizes all configuration in one place.
-If tomorrow the MySQL password changes, you change it ONCE in .env,
-no need to search through all the code.
+**Why a class?** It centralizes all configuration in one place. Any credential change is made in `.env` only, without modifying source code.
 
 ---
 
@@ -147,14 +143,13 @@ no need to search through all the code.
 Create `docker_login/docker/api.py` with the complete project content.
 This is the largest file: it contains the Flask API with:
 
-- Routes: `/`, `/welcome`, `/users` (CRUD), `/login`, `/check-session`
+- Routes: `/`, `/saludo`, `/usuarios` (CRUD), `/registro`, `/login`, `/verificar-sesion`
 - `@token_required` decorator to protect routes with JWT
 - MySQL connection using mysql.connector
 - Password hashing with werkzeug.security
 - Automatic creation of the `usuarios` table on startup
 
-**The complete file is at `docker_login/docker/api.py`.**
-The English comments explain every function and every relevant line.
+**The complete file is at `docker_login/docker/api.py`.** All functions and routes are documented with inline comments.
 
 ---
 
@@ -174,7 +169,7 @@ MYSQL_PASSWORD=una_clave_segura_api
 SECRET_KEY=0b855363bc44f16d8f73342325475f27d21bdef8263a24de8f468603d0466ef2
 ```
 
-**IMPORTANT:** In a real project, NEVER upload this file to Git.
+**Important:** This file must not be committed to version control.
 To generate a secure SECRET_KEY:
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
@@ -193,8 +188,7 @@ venv/
 __pycache__/
 ```
 
-**Why `.venv/` and `venv/`?** Depending on how the virtual environment is created,
-the folder may or may not have a dot. Both should be excluded.
+Both `venv/` and `.venv/` are excluded because the virtual environment directory name varies depending on how it is created.
 
 ---
 
@@ -235,11 +229,11 @@ volumes:
 ```
 
 **What each section does:**
-- `basedatos`: starts MySQL 8.0 with credentials from .env
-- `volumes`: persists MySQL data in a named volume
-- `healthcheck`: verifies that MySQL is ready before starting the API
-- `api`: builds the image from the Dockerfile and connects it to MySQL
-- `depends_on: condition: service_healthy`: waits for MySQL to respond
+- `basedatos`: starts MySQL 8.0 with credentials from `.env`
+- `volumes`: persists MySQL data in a named volume to survive container restarts
+- `healthcheck`: verifies that MySQL is accepting connections before the API starts
+- `api`: builds the image from the Dockerfile and connects it to the database
+- `depends_on: condition: service_healthy`: blocks the API startup until the healthcheck passes
 
 ---
 
@@ -254,10 +248,10 @@ sudo docker compose up --build
 ```
 
 **Expected result:**
-- First you will see Docker build the API image
-- Then it starts MySQL and waits for the healthcheck to respond
-- Finally it starts the API with Gunicorn
-- You will see Gunicorn logs in the terminal showing requests
+1. Docker builds the API image from the Dockerfile
+2. MySQL starts and the healthcheck begins polling
+3. Once the healthcheck passes, the API starts with Gunicorn
+4. Gunicorn access logs appear in the terminal for each request
 
 **To stop:**
 ```bash
@@ -275,13 +269,13 @@ sudo docker compose logs -f
 ## STEP 10: Create the frontend - index.html
 
 Create `docker_login/login/index.html` with the login form.
-The file uses Bootstrap 5.3.8 via CDN and jQuery 3.7.1 via CDN.
+Uses Bootstrap 5.3.8 and jQuery 3.7.1 via CDN.
 
 **The complete file is at `docker_login/login/index.html`.**
 Key elements:
-- `id="login-form"`: the form that script.js captures
-- `id="email"` and `id="password"`: the inputs that script.js reads
-- `id="result-message"`: div for success/error messages
+- `id="formulario-login"`: the form that script.js captures
+- `id="correo"` and `id="password"`: the inputs that script.js reads
+- `id="mensaje-resultado"`: div for success/error messages
 - Bootstrap CSS CDN in the head
 - jQuery and Bootstrap JS CDNs at the end of the body
 
@@ -311,7 +305,7 @@ Key elements:
 - Real logout with `sessionStorage.clear()` (block 2)
 - Displays the user name in the header (block 3)
 - Documentation of the 21 project steps
-- Configurable API_URL for the `/check-session` endpoint
+- Configurable API_URL for the `/verificar-sesion` endpoint
 
 ---
 
@@ -356,9 +350,7 @@ python -m http.server 8080
 # Open http://localhost:8080 in the browser
 ```
 
-**Why python -m http.server?** Some browsers block Ajax requests
-when HTML is opened directly as a file://. A local server
-prevents that problem.
+**Why python -m http.server?** Some browsers block Ajax requests when HTML is loaded via `file://` protocol. A local HTTP server avoids this restriction by serving files over `http://`.
 
 ---
 
@@ -367,19 +359,17 @@ prevents that problem.
 1. Make sure Docker is running (`sudo docker compose up --build` in `docker/`)
 2. Open `http://localhost:8080` (or the index.html file)
 3. Enter an email and password
-4. If it is the first time, there are no users: you will get "Incorrect email or password"
-5. To create a user, use curl or Postman:
+4. If there are no users in the database, the response will be "Incorrect email or password"
+5. To create a user, send a request via curl or Postman:
 
 ```bash
-# First log in with an existing user, or create one with curl:
-curl -X POST http://127.0.0.1:5000/users \
+curl -X POST http://127.0.0.1:5000/registro \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token_you_got>" \
-  -d '{"name":"orami","email":"orami@technova.com","password":"my_secure_password"}'
+  -d '{"nombre":"orami","correo":"orami@technova.com","password":"my_secure_password"}'
 ```
 
-6. Once a user is created, go back to the login and enter those credentials
-7. You should see the dashboard with "Welcome, orami"
+6. Once the user is created, return to the login page and enter those credentials
+7. The dashboard should display "Welcome, orami"
 
 ---
 
@@ -387,12 +377,12 @@ curl -X POST http://127.0.0.1:5000/users \
 
 1. On the dashboard, click "Log out"
 2. You should return to the login
-3. Try to access `dashboard.html` directly in the URL
-4. It should redirect you to the login automatically (the token was deleted)
+3. Attempt to access `dashboard.html` directly via URL
+4. The page should redirect to the login, since the token was removed from `sessionStorage`
 
 ---
 
-## USEFUL COMMANDS FOR DAILY USE
+## COMMON COMMANDS
 
 ```bash
 # View running containers
@@ -410,10 +400,10 @@ sudo docker compose exec api bash
 # Enter the MySQL container
 sudo docker compose exec basedatos mysql -u api_usuario -p
 
-# Stop everything and delete volumes (WARNING: deletes the database)
+# Stop all containers and remove volumes (WARNING: deletes database data)
 sudo docker compose down -v
 
-# Rebuild from scratch (if you changed something in the Dockerfile)
+# Rebuild images from scratch (use after modifying the Dockerfile)
 sudo docker compose up --build --force-recreate
 ```
 
