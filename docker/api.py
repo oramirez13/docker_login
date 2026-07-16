@@ -27,7 +27,7 @@ app = Flask(__name__)
 # which is where the frontend is served (python -m http.server 8080).
 # This prevents other websites from making unauthorized requests to our API.
 # In production, change this to the actual domain (e.g., "https://mydomain.com").
-CORS(app, origins=["http://localhost:8080"])
+CORS(app, origins=["http://localhost:8080", "http://127.0.0.1:8080"])
 
 
 def get_connection():
