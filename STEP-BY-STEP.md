@@ -132,7 +132,7 @@ MYSQL_ROOT_PASSWORD=una_clave_segura_root
 MYSQL_DATABASE=practica_db
 MYSQL_USER=api_usuario
 MYSQL_PASSWORD=una_clave_segura_api
-SECRET_KEY=0b855363bc44f16d8f73342325475f27d21bdef8263a24de8f468603d0466ef2
+SECRET_KEY=tu_clave_generada_aqui
 ```
 
 Guardar con Ctrl+O y salir con Ctrl+X.

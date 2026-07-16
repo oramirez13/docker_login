@@ -168,7 +168,7 @@ MYSQL_USER=api_usuario
 MYSQL_PASSWORD=una_clave_segura_api
 
 # Key for signing JWT tokens (must be long and random)
-SECRET_KEY=0b855363bc44f16d8f73342325475f27d21bdef8263a24de8f468603d0466ef2
+SECRET_KEY=tu_clave_generada_aqui
 ```
 
 **Important:** This file must not be committed to version control.
