@@ -71,11 +71,11 @@ http://localhost:8080
 
 ### Resumen de puertos
 
-| Servicio | Puerto | URL |
-|---|---|---|
-| Frontend | 8080 | http://localhost:8080 |
-| API Flask | 5000 | http://127.0.0.1:5000 |
-| MySQL | 3306 | 127.0.0.1:3306 |
+| Servicio  | Puerto | URL                   |
+| --------- | ------ | --------------------- |
+| Frontend  | 8080   | http://localhost:8080 |
+| API Flask | 5000   | http://127.0.0.1:5000 |
+| MySQL     | 3306   | 127.0.0.1:3306        |
 
 ---
 
@@ -162,7 +162,7 @@ El flag `-v` borra los volumes (datos de MySQL). Esto hace que se pierdan los us
 
 ### Error: "Connection refused" al conectar a MySQL
 
-El contenedor de MySQL todavia no esta listo. Espera unos segundos y verifica el estado con `sudo docker compose ps`. Si `basedatos` no muestra "healthy", la API no podra conectarse. El healthcheck deberia resolver esto automaticamente, pero a veces toma unos segundos extra en la primera ejecucion.
+El contenedor de MySQL todavía no esta listo. Espera unos segundos y verifica el estado con `sudo docker compose ps`. Si `basedatos` no muestra "healthy", la API no podra conectarse. El healthcheck deberia resolver esto automaticamente, pero a veces toma unos segundos extra en la primera ejecucion.
 
 ### Error: Gunicorn no muestra logs
 
@@ -170,7 +170,7 @@ Gunicorn no muestra peticiones por defecto. Si no ves nada en los logs, asegurat
 
 ### Error: La imagen de fondo no carga
 
-Si no tienes la imagen `infosec_orami_.png` en la carpeta `login/img/`, comenta las lineas de background-image en `style.css`.
+Si no tienes la imagen `infosec_orami_.png` en la carpeta `login/img/`, comenta las líneas de background-image en `style.css`.
 
 ---
 
