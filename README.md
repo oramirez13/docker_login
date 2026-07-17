@@ -1,7 +1,6 @@
-# Docker + Flask + MySQL: Secure Login System
+# Secure Login System (Docker + Flask + MySQL)
 
 Step-by-step guide to reproduce this project from scratch on any Linux machine.
-Each step includes the action to perform, the technical reason behind it, and the expected result.
 
 ---
 
@@ -26,7 +25,7 @@ sudo systemctl status docker
 sudo systemctl enable --now docker
 ```
 
-**Note:** The `docker` group grants root-equivalent privileges. Using `sudo` for every command is a deliberate choice to avoid adding the user to that group.
+**Note:** The `docker` group grants root-equivalent privileges.
 
 ---
 
@@ -41,6 +40,7 @@ mkdir -p docker_login/login/img
 ```
 
 **Expected result:**
+
 ```
 docker_login/
 ├── docker/
@@ -68,6 +68,7 @@ CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--access-logfile",
 ```
 
 **What each line does:**
+
 - `FROM python:3.12-slim`: uses a lightweight Python image as base
 - `WORKDIR /app`: creates and enters the /app folder inside the container
 - `COPY requirements.txt .`: copies the dependencies file before the source code (layer caching optimization)
@@ -99,6 +100,7 @@ Werkzeug==3.1.8
 ```
 
 **If you want to generate your own requirements.txt:**
+
 ```bash
 # Create virtual environment
 python -m venv .venv
@@ -134,7 +136,7 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY")
 ```
 
-**Why a class?** It centralizes all configuration in one place. Any credential change is made in `.env` only, without modifying source code.
+**class** centralizes all configuration in one place. Any credential change is made in `.env` only, without modifying source code.
 
 ---
 
@@ -173,6 +175,7 @@ SECRET_KEY=tu_clave_generada_aqui
 
 **Important:** This file must not be committed to version control.
 To generate a secure SECRET_KEY:
+
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
@@ -231,6 +234,7 @@ volumes:
 ```
 
 **What each section does:**
+
 - `basedatos`: starts MySQL 8.0 with credentials from `.env`
 - `volumes`: persists MySQL data in a named volume to survive container restarts
 - `healthcheck`: verifies that MySQL is accepting connections before the API starts
@@ -250,17 +254,20 @@ sudo docker compose up --build
 ```
 
 **Expected result:**
+
 1. Docker builds the API image from the Dockerfile
 2. MySQL starts and the healthcheck begins polling
 3. Once the healthcheck passes, the API starts with Gunicorn
 4. Gunicorn access logs appear in the terminal for each request
 
 **To stop:**
+
 ```bash
 sudo docker compose down
 ```
 
 **To view logs in background:**
+
 ```bash
 sudo docker compose up --build -d
 sudo docker compose logs -f
@@ -275,6 +282,7 @@ Uses Bootstrap 5.3.8 and jQuery 3.7.1 via CDN.
 
 **The complete file is at `docker_login/login/index.html`.**
 Key elements:
+
 - `id="formulario-login"`: the form that script.js captures
 - `id="correo"` and `id="password"`: the inputs that script.js reads
 - `id="mensaje-resultado"`: div for success/error messages
@@ -289,6 +297,7 @@ Create `docker_login/login/js/script.js`:
 
 **The complete file is at `docker_login/login/js/script.js`.**
 Key elements:
+
 - `var API_URL = "http://127.0.0.1:5000"`: configurable backend URL
 - Captures the form submit with `preventDefault()`
 - Sends POST to `/login` via `$.ajax()`
@@ -303,6 +312,7 @@ Create `docker_login/login/dashboard.html`:
 
 **The complete file is at `docker_login/login/dashboard.html`.**
 Key elements:
+
 - Session verification on page load (block 1)
 - Real logout with `sessionStorage.clear()` (block 2)
 - Displays the user name in the header (block 3)
@@ -317,6 +327,7 @@ Create `docker_login/login/css/style.css`:
 
 **The complete file is at `docker_login/login/css/style.css` (452 lines).**
 Key elements:
+
 - CSS variables with a dark palette inspired by TryHackMe
 - Background parallax with `infosec_orami_.png`
 - Responsive styles with breakpoints at 768px and 480px
@@ -459,7 +470,7 @@ CORS(app, origins=["https://mydomain.com", "https://admin.mydomain.com"])
 CORS(app, origins=["*"])
 ```
 
-**Why this matters:**
+**CORS restriction:**
 
 Without CORS restriction, any website could make requests to your API using the user's browser. Even though JWT tokens are not sent automatically like cookies, a malicious site could still attempt to exploit other vulnerabilities or perform denial-of-service attacks.
 
